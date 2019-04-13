@@ -1,0 +1,9 @@
+int: 10
+lst:
+- '1'
+- '2'
+- '3'
+- '4'
+unicode_sym:
+  cent: \U00A2
+  copy: '#169'
