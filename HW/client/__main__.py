@@ -1,12 +1,15 @@
 import json
 import yaml
+import zlib
 import socket
+import hashlib
 import argparse
 from datetime import datetime
 
 from settings import (
     HOST, PORT, BUFFERSIZE, ENCODING
 )
+
 
 host = HOST
 port = PORT
@@ -17,6 +20,9 @@ parser = argparse.ArgumentParser()
 parser.add_argument(
     '-c', '--config', type=str,
     help='Sets run configuration'
+)
+parser.add_argument(
+    '-m', '--mode', type=str, default='w'
 )
 args = parser.parse_args()
 
@@ -34,25 +40,42 @@ try:
 
     print('Client started')
 
-    action = input('Enter action name: ')
-    data = input('Enter data to send: ')
+    if args.mode == 'w':
+        while True:
+            hash_obj = hashlib.sha256()
+            hash_obj.update(
+                str(datetime.now().timestamp()).encode(ENCODING)
+            )
 
-    request = json.dumps(
-        {
-            'action': action,
-            'data': data,
-            'time': datetime.now().timestamp()
-        }
-    )
+            action = input('Enter action name: ')
+            data = input('Enter data to send: ')
+            
+            request = json.dumps(
+                {
+                    'action': action,
+                    'data': data,
+                    'time': datetime.now().timestamp(),
+                    'user': hash_obj.hexdigest()
+                }
+            )
 
-    sock.send(request.encode(encoding))
-    b_data = sock.recv(buffersize)
-    response = json.loads(
-        b_data.decode(encoding)
-    )
+            sock.send(
+                zlib.compress(
+                    request.encode(encoding)
+                )
+            )
+    else:
+        while True:
+            b_data = sock.recv(buffersize)
 
-    print(response)
+            b_response = zlib.decompress(b_data) 
 
-    sock.close()
+            response = json.loads(
+                b_response.decode(encoding)
+            )
+            
+            print(response)
+
 except KeyboardInterrupt:
     print('Client closed')
+    sock.close()

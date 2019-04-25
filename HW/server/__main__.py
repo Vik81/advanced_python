@@ -1,15 +1,11 @@
 import json
 import yaml
 import socket
+import select
 import argparse
+import logging
 
-from actions import (
-    resolve, get_server_actions
-)
-from protocol import (
-    validate_request, make_response, make_400,
-    make_404
-)
+from handlers import handle_default_request
 from settings import (
     HOST, PORT, BUFFERSIZE, ENCODING
 )
@@ -35,43 +31,48 @@ if args.config:
         buffersize = conf.get('buffersize', BUFFERSIZE)
         encoding = conf.get('encoding', ENCODING)
 
+logging.basicConfig(
+    level=logging.DEBUG,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler('info.log', encoding=ENCODING),
+        logging.StreamHandler()
+    ]
+)
+
+requests = []
+connections = []
+
 try:
     sock = socket.socket()
     sock.bind((host, port))
+    sock.settimeout(0)
     sock.listen(10)
-    server_actions = get_server_actions()
 
-    print('Server started')
+    logging.info('Server started')
 
     while True:
-        client, address = sock.accept()
-        print(f'Client with address { address } was detected')
+        try:
+            client, address = sock.accept()
+            logging.info(f'Client with address { address } was detected')
+            connections.append(client)
+        except:
+            pass
 
-        b_request = client.recv(buffersize)
-        request = json.loads(b_request.decode(encoding))
+        rlist, wlist, xlist = select.select(
+            connections, connections, connections, 0
+        )
 
-        action_name = request.get('action')
+        for r_client in rlist:
+            b_request = r_client.recv(buffersize)
+            requests.append(b_request)
 
-        if validate_request(request):
-            controller = resolve(action_name, server_actions)
-            if controller:
-                try:
-                    response = controller(request)
-                except Exception as err:
-                    print(err)
-                    response = make_response(
-                        request, 500, 'Internal server error'
-                    )
-            else:
-                print(f'Action with name { action_name } does not exists')
-                response = make_404(request)
-        else:
-            print(f'Request is not valid')
-            response = make_400(request)
+        if requests:
+            b_request = requests.pop()
+            b_response = handle_default_request(b_request)
 
-        s_response = json.dumps(response)
-        client.send(s_response.encode(encoding))
+            for w_client in wlist:
+                w_client.send(b_response)
 
-        client.close()
 except KeyboardInterrupt:
-    print('Client closed')
+    logging.info('Client closed')

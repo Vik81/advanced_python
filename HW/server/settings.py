@@ -5,4 +5,5 @@ ENCODING = 'utf-8'
 
 INSTALLED_MODULES = [
     'echo',
+    'errors',
 ]

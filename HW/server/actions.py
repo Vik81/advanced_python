@@ -4,17 +4,17 @@ from settings import INSTALLED_MODULES
 
 def get_server_actions():
     return reduce(
-        lambda value, item: value + getattr(item, 'actionnames', tuple()),
+        lambda actions, module: actions + getattr(module, 'actionnames', tuple()),
         reduce(
-            lambda value, item: value + (getattr(item, 'actions', tuple()),),
+            lambda submodules, module: submodules + (getattr(module, 'actions', tuple()),),
             reduce(
-                lambda value, item: value + (__import__(f'{item}.actions'),),
+                lambda modules, module: modules + (__import__(f'{module}.actions'),),
                 INSTALLED_MODULES,
-                tuple(),
+                tuple()
             ),
-            tuple(),
+            tuple()
         ),
-        tuple(),
+        tuple()
     )
 
 
