@@ -2,6 +2,7 @@ import json
 import yaml
 import socket
 import argparse
+from datetime import datetime
 
 from settings import (
     HOST, PORT, BUFFERSIZE, ENCODING
@@ -33,10 +34,15 @@ try:
 
     print('Client started')
 
+    action = input('Enter action name: ')
     data = input('Enter data to send: ')
 
     request = json.dumps(
-        {'data': data}
+        {
+            'action': action,
+            'data': data,
+            'time': datetime.now().timestamp()
+        }
     )
 
     sock.send(request.encode(encoding))
